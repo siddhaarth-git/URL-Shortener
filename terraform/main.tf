@@ -142,11 +142,17 @@ resource "aws_cloudwatch_dashboard" "url_shortener" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        type = "metric"
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 8
+        height = 6
         properties = {
           title  = "Lambda Invocations"
+          region = "us-east-1"
           period = 60
           stat   = "Sum"
+          view   = "timeSeries"
           metrics = [
             ["AWS/Lambda", "Invocations", "FunctionName", "create-url"],
             ["AWS/Lambda", "Invocations", "FunctionName", "redirect-url"]
@@ -154,11 +160,17 @@ resource "aws_cloudwatch_dashboard" "url_shortener" {
         }
       },
       {
-        type = "metric"
+        type   = "metric"
+        x      = 8
+        y      = 0
+        width  = 8
+        height = 6
         properties = {
           title  = "Lambda Errors"
+          region = "us-east-1"
           period = 60
           stat   = "Sum"
+          view   = "timeSeries"
           metrics = [
             ["AWS/Lambda", "Errors", "FunctionName", "create-url"],
             ["AWS/Lambda", "Errors", "FunctionName", "redirect-url"]
@@ -166,11 +178,17 @@ resource "aws_cloudwatch_dashboard" "url_shortener" {
         }
       },
       {
-        type = "metric"
+        type   = "metric"
+        x      = 16
+        y      = 0
+        width  = 8
+        height = 6
         properties = {
           title  = "Lambda Duration (ms)"
+          region = "us-east-1"
           period = 60
           stat   = "Average"
+          view   = "timeSeries"
           metrics = [
             ["AWS/Lambda", "Duration", "FunctionName", "create-url"],
             ["AWS/Lambda", "Duration", "FunctionName", "redirect-url"]
