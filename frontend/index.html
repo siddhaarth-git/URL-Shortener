@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URL Shortener</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 1rem;
+      color: #111;
+    }
+
+    .container { width: 100%; max-width: 560px; }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: #fff;
+      border: 0.5px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      color: #666;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 14px;
+      border: 0.5px solid #e0e0e0;
+      border-radius: 8px;
+      outline: none;
+      margin-bottom: 12px;
+      background: #fff;
+      color: #111;
+    }
+
+    input[type="text"]:focus { border-color: #aaa; }
+
+    button {
+      width: 100%;
+      padding: 9px;
+      font-size: 14px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #333; }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+
+    .result-card { display: none; }
+
+    .result-label {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .short-url {
+      font-size: 14px;
+      font-weight: 500;
+      color: #111;
+      flex: 1;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      width: auto;
+      padding: 6px 14px;
+      font-size: 13px;
+      background: transparent;
+      color: #111;
+      border: 0.5px solid #e0e0e0;
+      border-radius: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .copy-btn:hover { background: #f5f5f5; }
+
+    .error {
+      font-size: 13px;
+      color: #c0392b;
+      margin-top: 8px;
+      display: none;
+    }
+
+    .history-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 1.5rem 0 12px;
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      background: #fff;
+      border: 0.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .history-urls { flex: 1; min-width: 0; }
+
+    .history-short {
+      font-size: 14px;
+      font-weight: 500;
+      color: #111;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-long {
+      font-size: 12px;
+      color: #888;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-copy {
+      width: auto;
+      padding: 4px 12px;
+      font-size: 12px;
+      background: transparent;
+      color: #111;
+      border: 0.5px solid #e0e0e0;
+      border-radius: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .history-copy:hover { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>URL Shortener</h1>
+    <p class="subtitle">Paste a long URL and get a short link instantly</p>
+
+    <div class="card">
+      <label for="url-input">Long URL</label>
+      <input type="text" id="url-input" placeholder="https://example.com/very/long/url" />
+      <button id="shorten-btn" onclick="shortenUrl()">Shorten URL</button>
+      <p class="error" id="error-msg">Something went wrong. Please try again.</p>
+    </div>
+
+    <div class="card result-card" id="result-card">
+      <p class="result-label">Short link</p>
+      <div class="result-row">
+        <span class="short-url" id="short-url-display"></span>
+        <button class="copy-btn" onclick="copyUrl('result')">Copy</button>
+      </div>
+    </div>
+
+    <div id="history-section" style="display:none;">
+      <p class="history-title">Recent links</p>
+      <div class="history-list" id="history-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://wt23w0da4b.execute-api.us-east-1.amazonaws.com'
+    let currentShortUrl = ''
+    let history = JSON.parse(localStorage.getItem('url_history') || '[]')
+
+    window.onload = () => renderHistory()
+
+    async function shortenUrl() {
+      const input = document.getElementById('url-input')
+      const btn = document.getElementById('shorten-btn')
+      const errorMsg = document.getElementById('error-msg')
+      const longUrl = input.value.trim()
+
+      if (!longUrl) return
+
+      errorMsg.style.display = 'none'
+      btn.disabled = true
+      btn.textContent = 'Shortening...'
+
+      try {
+        const res = await fetch(`${API_URL}/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ long_url: longUrl })
+        })
+
+        const data = await res.json()
+
+        currentShortUrl = data.short_url
+
+        document.getElementById('short-url-display').textContent = currentShortUrl
+        document.getElementById('result-card').style.display = 'block'
+
+        history.unshift({ short_url: currentShortUrl, long_url: longUrl })
+        if (history.length > 10) history = history.slice(0, 10)
+        localStorage.setItem('url_history', JSON.stringify(history))
+
+        renderHistory()
+        input.value = ''
+
+      } catch (err) {
+        errorMsg.style.display = 'block'
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Shorten URL'
+      }
+    }
+
+    function copyUrl(source, url) {
+      const textToCopy = source === 'result' ? currentShortUrl : url
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => alert('Copied to clipboard!'))
+    }
+
+    function renderHistory() {
+      const section = document.getElementById('history-section')
+      const list = document.getElementById('history-list')
+
+      if (history.length === 0) {
+        section.style.display = 'none'
+        return
+      }
+
+      section.style.display = 'block'
+      list.innerHTML = history.map(item => `
+        <div class="history-item">
+          <div class="history-urls">
+            <div class="history-short">${item.short_url}</div>
+            <div class="history-long">${item.long_url}</div>
+          </div>
+          <button class="history-copy" onclick="copyUrl('history', '${item.short_url}')">Copy</button>
+        </div>
+      `).join('')
+    }
+  </script>
+</body>
+</html>

@@ -215,3 +215,58 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
     FunctionName = "create-url"
   }
 }
+
+# S3 bucket to host the frontend
+resource "aws_s3_bucket" "frontend" {
+  bucket = "url-shortener-frontend-sid"
+
+  tags = {
+    Project = "url-shortener"
+  }
+}
+
+# Allow public read access
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+# Bucket policy: allow anyone to read
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = "*"
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.frontend.arn}/*"
+      }
+    ]
+  })
+}
+
+# Enable static website hosting
+resource "aws_s3_bucket_website_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = "index.html"
+  }
+}
+
+# Upload index.html to S3
+resource "aws_s3_object" "index" {
+  bucket       = aws_s3_bucket.frontend.id
+  key          = "index.html"
+  source       = "../frontend/index.html"
+  content_type = "text/html"
+  etag         = filemd5("../frontend/index.html")
+}
