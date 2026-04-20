@@ -39,6 +39,7 @@ resource "aws_lambda_function" "create_url" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "create_url.lambda_handler"
   runtime          = "python3.12"
+  source_code_hash = filebase64sha256("../lambda/create_url.zip")
 
   tags = {
     Project = "url-shortener"
@@ -52,6 +53,7 @@ resource "aws_lambda_function" "redirect_url" {
   role             = aws_iam_role.lambda_role.arn
   handler          = "redirect_url.lambda_handler"
   runtime          = "python3.12"
+  source_code_hash = filebase64sha256("../lambda/redirect_url.zip")
 
   tags = {
     Project = "url-shortener"
