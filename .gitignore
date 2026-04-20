@@ -1,0 +1,11 @@
+# Terraform
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.lock.hcl
+
+# Lambda zips
+lambda/*.zip
+
+# AWS credentials (never commit these)
+.aws/
