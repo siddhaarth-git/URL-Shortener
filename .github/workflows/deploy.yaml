@@ -1,0 +1,50 @@
+name: Deploy URL Shortener
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Download your code onto the GitHub runner
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      # Step 3: Package Lambda functions into zips
+      - name: Package Lambda functions
+        run: |
+          cd lambda
+          zip create_url.zip create_url.py
+          zip redirect_url.zip redirect_url.py
+
+      # Step 4: Install Terraform
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # Step 5: Configure AWS credentials from GitHub Secrets
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step 6: Initialize Terraform
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      # Step 7: Apply infrastructure changes
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: terraform
