@@ -26,7 +26,7 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'body': json.dumps({
                 'short_code': short_code,
-                'short_url': f"https://your-api-url/{short_code}"
+                'short_url': f"https://wt23w0da4b.execute-api.us-east-1.amazonaws.com/{short_code}"
             })
         }
 
