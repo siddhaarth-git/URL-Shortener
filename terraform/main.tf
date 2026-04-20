@@ -41,6 +41,10 @@ resource "aws_lambda_function" "create_url" {
   runtime          = "python3.12"
   source_code_hash = filebase64sha256("../lambda/create_url.zip")
 
+  tracing_config {
+    mode = "Active"
+  }
+
   tags = {
     Project = "url-shortener"
   }
@@ -54,6 +58,10 @@ resource "aws_lambda_function" "redirect_url" {
   handler          = "redirect_url.lambda_handler"
   runtime          = "python3.12"
   source_code_hash = filebase64sha256("../lambda/redirect_url.zip")
+
+  tracing_config {
+    mode = "Active"
+  }
 
   tags = {
     Project = "url-shortener"
@@ -125,4 +133,67 @@ resource "aws_lambda_permission" "redirect_url" {
   function_name = aws_lambda_function.redirect_url.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.url_shortener_api.execution_arn}/*/*"
+}
+
+# CloudWatch Dashboard
+resource "aws_cloudwatch_dashboard" "url_shortener" {
+  dashboard_name = "url-shortener"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        properties = {
+          title  = "Lambda Invocations"
+          period = 60
+          stat   = "Sum"
+          metrics = [
+            ["AWS/Lambda", "Invocations", "FunctionName", "create-url"],
+            ["AWS/Lambda", "Invocations", "FunctionName", "redirect-url"]
+          ]
+        }
+      },
+      {
+        type = "metric"
+        properties = {
+          title  = "Lambda Errors"
+          period = 60
+          stat   = "Sum"
+          metrics = [
+            ["AWS/Lambda", "Errors", "FunctionName", "create-url"],
+            ["AWS/Lambda", "Errors", "FunctionName", "redirect-url"]
+          ]
+        }
+      },
+      {
+        type = "metric"
+        properties = {
+          title  = "Lambda Duration (ms)"
+          period = 60
+          stat   = "Average"
+          metrics = [
+            ["AWS/Lambda", "Duration", "FunctionName", "create-url"],
+            ["AWS/Lambda", "Duration", "FunctionName", "redirect-url"]
+          ]
+        }
+      }
+    ]
+  })
+}
+
+# CloudWatch Alarm: alert when errors spike
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  alarm_name          = "url-shortener-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 2
+  alarm_description   = "Triggers when Lambda errors exceed 2 in 1 minute"
+
+  dimensions = {
+    FunctionName = "create-url"
+  }
 }
